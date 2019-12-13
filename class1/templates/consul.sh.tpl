@@ -10,11 +10,12 @@ echo "Grabbing IPs..."
 PRIVATE_IP=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
 
 echo "Installing dependencies..."
-sudo apt-get -qq update &>/dev/null
-sudo apt-get -yqq install unzip &>/dev/null
+apt-get -qq update &>/dev/null
+apt-get -yqq install unzip &>/dev/null
+apt-get install dnsmasq
 
 echo "Configuring dnsmasq..."
-sudo cat << EODMCF >/etc/dnsmasq.d/10-consul
+cat << EODMCF >/etc/dnsmasq.d/10-consul
 # Enable forward lookup of the 'consul' domain:
 server=/consul/127.0.0.1#8600
 EODMCF
@@ -27,14 +28,14 @@ curl -sLo consul.zip https://releases.hashicorp.com/consul/${consul_version}/con
 
 echo "Installing Consul..."
 unzip consul.zip >/dev/null
-sudo chmod +x consul
-sudo mv consul /usr/local/bin/consul
+chmod +x consul
+mv consul /usr/local/bin/consul
 
 # Setup Consul
-sudo mkdir -p /opt/consul
-sudo mkdir -p /etc/consul.d
-sudo mkdir -p /run/consul
-sudo tee /etc/consul.d/config.json > /dev/null <<EOF
+mkdir -p /opt/consul
+mkdir -p /etc/consul.d
+mkdir -p /run/consul
+tee /etc/consul.d/config.json > /dev/null <<EOF
 {
   "bind_addr": "$PRIVATE_IP",
   "data_dir": "/opt/consul",
@@ -48,11 +49,11 @@ sudo tee /etc/consul.d/config.json > /dev/null <<EOF
 EOF
 
 # Create user & grant ownership of folders
-sudo useradd consul
-sudo chown -R consul:consul /opt/consul /etc/consul.d /run/consul
+useradd consul
+chown -R consul:consul /opt/consul /etc/consul.d /run/consul
 
 # Configure consul service
-sudo tee /etc/systemd/system/consul.service > /dev/null <<"EOF"
+tee /etc/systemd/system/consul.service > /dev/null <<"EOF"
 [Unit]
 Description=Consul service discovery agent
 Requires=network-online.target
@@ -73,6 +74,28 @@ TimeoutStopSec=5
 WantedBy=multi-user.target
 EOF
 
-sudo systemctl daemon-reload
-sudo systemctl enable consul.service
-sudo systemctl start consul.service
+systemctl daemon-reload
+systemctl enable consul.service
+systemctl start consul.service
+
+# Check if the instance is client, install apache and configure webservice
+if [ "${role}" == "client" ]; then
+    apt-get -qq update &>/dev/null
+    apt-get -yqq install apache2 &>/dev/null
+    tee /etc/consul.d/webserver.json > /dev/null <<EOF
+    {
+    "service":
+        {
+            "name": "webserver",
+            "port": 80,
+            "check": 
+            {
+                "args": ["curl", "localhost"],
+                "interval": "10s"
+            }
+        }
+    }
+EOF
+    chown consul:consul /etc/consul.d/webserver.json
+    consul reload
+fi

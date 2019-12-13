@@ -1,1 +1,1 @@
-# service_discovery
+# Service Discovery - Consul - Homework 1

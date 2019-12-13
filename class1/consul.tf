@@ -2,20 +2,15 @@
 data "template_file" "consul-server" {
   count    = "${var.server.count}"
   template = "${file("templates/consul.sh.tpl")}"
-
   vars = {
+    role = "server"
     consul_version = "${var.consul_version}"
-
     config = <<EOF
-     "bootstrap_expect": 1,
+     "bootstrap_expect": ${var.server.count},
      "node_name": "${var.server.prefix}-${count.index+1}",
-     "retry_join_ec2": {
-       "provider": "aws"
-       "tag_key": "${var.consul_join.tag_key}",
-       "tag_value": "${var.consul_join.tag_value}"
-     },
+     "retry_join": ["provider=aws tag_key=${var.consul_join.tag_key} tag_value=${var.consul_join.tag_value}"],
      "ui": true,
-     "client_addr": "0.0.0.0"
+     "client_addr": "0.0.0.0",
      "server": true
     EOF
   }
@@ -25,18 +20,13 @@ data "template_file" "consul-server" {
 data "template_file" "consul-client" {
   count    = "${var.client.count}"
   template = "${file("templates/consul.sh.tpl")}"
-
   vars = {
+    role = "client"
     consul_version = "${var.consul_version}"
-
     config = <<EOF
      "node_name": "${var.client.prefix}-${count.index+1}",
-     "retry_join_ec2": {
-       "provider": "aws"
-       "tag_key": "${var.consul_join.tag_key}",
-       "tag_value": "${var.consul_join.tag_value}"
-     },
-     "enable_script_checks": true
+     "retry_join": ["provider=aws tag_key=${var.consul_join.tag_key} tag_value=${var.consul_join.tag_value}"],
+     "enable_script_checks": true,
      "server": false
     EOF
   }

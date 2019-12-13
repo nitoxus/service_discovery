@@ -39,7 +39,7 @@ variable "ec2_instance" {
 }
 variable "server" {
   default = {
-    count = 1
+    count = 3
     prefix = "consul-server"
   }
 }
