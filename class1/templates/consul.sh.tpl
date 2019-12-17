@@ -11,8 +11,7 @@ PRIVATE_IP=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
 
 echo "Installing dependencies..."
 apt-get -qq update &>/dev/null
-apt-get -yqq install unzip &>/dev/null
-apt-get install dnsmasq
+apt-get -yqq install unzip dnsmasq &>/dev/null
 
 echo "Configuring dnsmasq..."
 cat << EODMCF >/etc/dnsmasq.d/10-consul
